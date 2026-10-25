@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Віртуальна лабораторія: Зріз стебла</title>
+    
+    <!-- Завантаження Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Завантаження React та ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Завантаження Babel для компіляції JSX у браузері -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-[#f8faf9] text-gray-900 font-sans">
+    
+    <!-- Контейнер для нашого додатку -->
+    <div id="root"></div>
+
+    <!-- Основний скрипт додатку -->
+    <script type="text/babel">
+        const { useState } = React;
+
+        // --- ІКОНКИ (вбудовані SVG замість зовнішніх бібліотек) ---
+        const IconMicroscope = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 18h8"/><path d="M3 22h18"/><path d="M14 22a7 7 0 1 0 0-14h-1"/><path d="M9 14h2"/><path d="M9 12a2 2 0 0 1-2-2V6h6v4a2 2 0 0 1-2 2Z"/><path d="M12 6V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3"/></svg>;
+        const IconTestTube = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 7 6.82 21.18a2.83 2.83 0 0 1-3.99-.01v0a2.83 2.83 0 0 1 0-4L17 3"/><path d="m16 2 6 6"/><path d="M12 16H4"/></svg>;
+        const IconBook = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+        const IconCheckSquare = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>;
+        const IconRefresh = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
+        const IconCheckCircle = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+        const IconAlert = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+        const IconEye = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>;
+        const IconInfo = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>;
+
+        // --- ДАНІ ---
+        const TABS = [
+            { id: 'prep', label: 'Підготовка препарату', icon: IconTestTube },
+            { id: 'microscope', label: 'Віртуальний мікроскоп', icon: IconMicroscope },
+            { id: 'anatomy', label: 'Вивчення будови', icon: IconBook },
+            { id: 'quiz', label: 'Перевірка знань', icon: IconCheckSquare },
+        ];
+
+        const PREP_STEPS = [
+            { id: 'slide', label: '1. Предметне скло' },
+            { id: 'water', label: '2. Крапля води' },
+            { id: 'stem', label: '3. Зріз стебла' },
+            { id: 'cover', label: '4. Покривне скельце' }
+        ];
+
+        const ANATOMY_DATA = [
+            { id: 'epidermis', label: 'Покривна тканина (Епідерма)', desc: 'Захищає стебло від пошкоджень та висихання. Утворена одним шаром щільно зімкнутих клітин на поверхні стебла.' },
+            { id: 'parenchyma', label: 'Основна тканина (Паренхіма)', desc: 'Заповнює весь простір між іншими тканинами. Бере участь у запасанні поживних речовин, а зовнішні шари можуть здійснювати фотосинтез.' },
+            { id: 'xylem', label: 'Ксилема (Деревина)', desc: 'Частина провідного пучка. Транспортує воду та розчинені мінеральні речовини від коренів до інших органів. Клітини мають товсті стінки.' },
+            { id: 'phloem', label: 'Флоема (Луб)', desc: 'Частина провідного пучка. Транспортує розчинені органічні речовини від зелених частин рослини до інших органів.' }
+        ];
+
+        const QUIZ_QUESTIONS = [
+            {
+                question: 'Яка тканина захищає стебло від висихання та зовнішніх пошкоджень?',
+                options: ['Флоема', 'Ксилема', 'Основна тканина', 'Епідерма (покривна)'],
+                correctIndex: 3
+            },
+            {
+                question: 'Яка правильна послідовність виготовлення мікропрепарату?',
+                options: [
+                'Скло -> Зріз -> Вода -> Скельце',
+                'Скло -> Вода -> Зріз -> Скельце',
+                'Вода -> Скло -> Скельце -> Зріз'
+                ],
+                correctIndex: 1
+            },
+            {
+                question: 'Що транспортує ксилема?',
+                options: [
+                'Органічні речовини від листків',
+                'Воду і мінеральні солі від коренів',
+                'Кисень для дихання'
+                ],
+                correctIndex: 1
+            }
+        ];
+
+        // --- ВЕКТОРНА ГРАФІКА ---
+        const DicotSVG = () => (
+            <svg viewBox="0 0 400 400" className="w-full h-full drop-shadow-md">
+                <rect width="400" height="400" fill="#f0fdf4" />
+                <circle cx="200" cy="200" r="180" fill="#dcfce7" stroke="#166534" strokeWidth="4" />
+                <circle cx="200" cy="200" r="160" fill="#bbf7d0" stroke="#15803d" strokeWidth="2" strokeDasharray="4 4" />
+                {[0, 45, 90, 135, 180, 225, 270, 315].map(angle => {
+                const rad = angle * Math.PI / 180;
+                const cx = 200 + 130 * Math.cos(rad);
+                const cy = 200 + 130 * Math.sin(rad);
+                return (
+                    <g key={angle} transform={`rotate(${angle + 90} ${cx} ${cy})`}>
+                    <ellipse cx={cx} cy={cy} rx="20" ry="30" fill="#86efac" stroke="#166534" strokeWidth="2" />
+                    <ellipse cx={cx} cy={cy - 10} rx="12" ry="16" fill="#fcd34d" stroke="#b45309" strokeWidth="1" />
+                    </g>
+                );
+                })}
+                <text x="200" y="200" textAnchor="middle" fill="#166534" fontSize="14" opacity="0.5">Серцевина (Паренхіма)</text>
+            </svg>
+        );
+
+        const MonocotSVG = () => (
+            <svg viewBox="0 0 400 400" className="w-full h-full drop-shadow-md">
+                <rect width="400" height="400" fill="#f0fdf4" />
+                <circle cx="200" cy="200" r="180" fill="#dcfce7" stroke="#166534" strokeWidth="4" />
+                {Array.from({ length: 35 }).map((_, i) => {
+                const r = 30 + ((i * 137) % 140);
+                const angle = (i * 73) % 360;
+                const rad = angle * Math.PI / 180;
+                const cx = 200 + r * Math.cos(rad);
+                const cy = 200 + r * Math.sin(rad);
+                return (
+                    <circle key={i} cx={cx} cy={cy} r="10" fill="#86efac" stroke="#166534" strokeWidth="2" />
+                );
+                })}
+            </svg>
+        );
+
+        const AnatomySVG = () => (
+            <svg viewBox="0 0 400 400" className="w-full h-full bg-white rounded-xl shadow-inner">
+                <path d="M50 280 A 150 150 0 0 1 350 280 L 300 280 A 100 100 0 0 0 100 280 Z" fill="#4ade80" stroke="#14532d" strokeWidth="2" />
+                <text x="200" y="110" fontSize="14" fontWeight="bold" textAnchor="middle" fill="#14532d">Епідерма (Покривна тканина)</text>
+                <line x1="200" y1="115" x2="200" y2="135" stroke="#14532d" strokeWidth="2" />
+                
+                <path d="M100 280 A 100 100 0 0 1 300 280 L 250 280 A 50 50 0 0 0 150 280 Z" fill="#bbf7d0" stroke="#166534" strokeWidth="2" />
+                <text x="100" y="190" fontSize="14" fontWeight="bold" textAnchor="middle" fill="#166534">Паренхіма</text>
+                <line x1="120" y1="200" x2="160" y2="230" stroke="#166534" strokeWidth="2" />
+
+                <g transform="translate(200, 200)">
+                <ellipse cx="0" cy="0" rx="35" ry="50" fill="#fef08a" stroke="#854d0e" strokeWidth="2" />
+                <path d="M -35 0 Q 0 20 35 0" fill="none" stroke="#854d0e" strokeWidth="2" />
+                <text x="0" y="-15" fontSize="14" fontWeight="bold" textAnchor="middle" fill="#713f12">Флоема</text>
+                <text x="0" y="30" fontSize="14" fontWeight="bold" textAnchor="middle" fill="#713f12">Ксилема</text>
+                </g>
+            </svg>
+        );
+
+        // --- КОМПОНЕНТИ ---
+        const PreparationTab = () => {
+            const [currentStep, setCurrentStep] = useState(0);
+            const [error, setError] = useState(false);
+            const [success, setSuccess] = useState(false);
+
+            const handleStepClick = (index) => {
+                if (success) return;
+                
+                if (index === currentStep) {
+                setError(false);
+                const nextStep = currentStep + 1;
+                setCurrentStep(nextStep);
+                if (nextStep === PREP_STEPS.length) {
+                    setSuccess(true);
+                }
+                } else if (index > currentStep) {
+                setError(true);
+                setTimeout(() => setError(false), 2000);
+                }
+            };
+
+            return (
+                <div className="flex flex-col md:flex-row gap-8 transition-opacity duration-300">
+                <div className="w-full md:w-1/3 flex flex-col gap-4">
+                    <h3 className="text-xl font-semibold text-green-800 mb-2">Алгоритм дій</h3>
+                    <p className="text-sm text-gray-600 mb-4">Натискайте на елементи у правильній послідовності.</p>
+                    
+                    {PREP_STEPS.map((step, idx) => (
+                    <button
+                        key={step.id}
+                        onClick={() => handleStepClick(idx)}
+                        disabled={success || idx < currentStep}
+                        className={`p-4 rounded-xl border-2 text-left transition-all font-medium flex items-center justify-between
+                        ${idx < currentStep ? 'bg-green-100 border-green-500 text-green-800 opacity-60 cursor-not-allowed' : 
+                            'bg-white border-gray-200 hover:border-green-500 text-gray-700 hover:shadow-md'}`}
+                    >
+                        {step.label}
+                        {idx < currentStep && <IconCheckCircle className="text-green-600" size={20} />}
+                    </button>
+                    ))}
+
+                    {error && (
+                    <div className="p-3 bg-red-50 text-red-600 rounded-lg flex items-center gap-2 border border-red-200 mt-2">
+                        <IconAlert size={18} />
+                        <span className="text-sm font-medium">Неправильна послідовність!</span>
+                    </div>
+                    )}
+
+                    <button onClick={() => { setCurrentStep(0); setSuccess(false); setError(false); }} className="mt-4 flex items-center justify-center gap-2 text-gray-500 hover:text-green-700 font-medium py-2 rounded-lg hover:bg-green-50 transition-colors">
+                    <IconRefresh size={18} /> Почати заново
+                    </button>
+                </div>
+
+                <div className="w-full md:w-2/3 bg-gray-50 rounded-2xl border-2 border-gray-100 p-8 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden shadow-inner">
+                    <div className="relative w-72 h-40 flex items-center justify-center mt-8">
+                    {currentStep >= 1 && <div className="absolute w-64 h-24 bg-blue-50/50 border border-blue-200 rounded shadow-sm backdrop-blur-sm transition-all duration-300"></div>}
+                    {currentStep >= 2 && <div className="absolute w-12 h-12 bg-blue-300/40 rounded-full blur-[1px] transition-all duration-300"></div>}
+                    {currentStep >= 3 && (
+                        <div className="absolute w-10 h-10 bg-green-200/80 border border-green-500 rounded-full transition-all duration-300 flex items-center justify-center">
+                        <div className="w-6 h-6 bg-green-100/50 border border-green-400 rounded-full"></div>
+                        </div>
+                    )}
+                    {currentStep >= 4 && <div className="absolute w-16 h-16 bg-white/30 border border-gray-300 shadow-sm rotate-6 transition-all duration-300 backdrop-blur-[1px]"></div>}
+                    </div>
+                    {success && (
+                    <div className="absolute bottom-6 bg-green-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg">
+                        <IconCheckCircle size={24} /> Мікропрепарат готовий!
+                    </div>
+                    )}
+                </div>
+                </div>
+            );
+        };
+
+        const MicroscopeTab = () => {
+            const [plantType, setPlantType] = useState('dicot');
+            const [focus, setFocus] = useState(15);
+            const [zoom, setZoom] = useState(1);
+            const blurAmount = Math.abs(focus - 50) * 0.15;
+
+            return (
+                <div className="flex flex-col lg:flex-row gap-8 transition-opacity duration-300">
+                <div className="w-full lg:w-1/3 flex flex-col gap-6 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                    <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                        <IconEye className="text-green-600" /> Вибір зразка
+                    </h3>
+                    <div className="flex flex-col gap-2">
+                        <button onClick={() => setPlantType('dicot')} className={`p-3 rounded-xl text-left text-sm font-medium transition-colors border-2 ${plantType === 'dicot' ? 'bg-green-50 text-green-800 border-green-500' : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}>
+                        Дводольна рослина (напр. Соняшник)
+                        </button>
+                        <button onClick={() => setPlantType('monocot')} className={`p-3 rounded-xl text-left text-sm font-medium transition-colors border-2 ${plantType === 'monocot' ? 'bg-green-50 text-green-800 border-green-500' : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'}`}>
+                        Однодольна рослина (напр. Кукурудза)
+                        </button>
+                    </div>
+                    </div>
+                    <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Гвинт фокусування (Різкість)</h3>
+                    <input type="range" min="0" max="100" value={focus} onChange={(e) => setFocus(Number(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600" />
+                    </div>
+                    <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Об'єктив (Збільшення)</h3>
+                    <input type="range" min="1" max="3" step="0.1" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600" />
+                    </div>
+                </div>
+
+                <div className="w-full lg:w-2/3 flex items-center justify-center p-6 bg-gray-900 rounded-2xl min-h-[450px] shadow-inner relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.8)_100%)] z-20 pointer-events-none"></div>
+                    <div className="relative w-80 h-80 sm:w-[400px] sm:h-[400px] rounded-full overflow-hidden border-[12px] border-black shadow-[0_0_20px_rgba(0,0,0,0.8)_inset] bg-[#f0fdf4] z-10 flex items-center justify-center">
+                    <div className="absolute inset-0 z-20 pointer-events-none opacity-30 flex items-center justify-center">
+                        <div className="w-full h-[1px] bg-black absolute"></div>
+                        <div className="h-full w-[1px] bg-black absolute"></div>
+                        <div className="w-40 h-40 border border-black rounded-full absolute"></div>
+                    </div>
+                    <div className="absolute w-full h-full transition-all duration-200 ease-out" style={{ filter: `blur(${blurAmount}px)`, transform: `scale(${zoom})`, transformOrigin: 'center center' }}>
+                        {plantType === 'dicot' ? <DicotSVG /> : <MonocotSVG />}
+                    </div>
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const AnatomyTab = () => {
+            const [activeTissue, setActiveTissue] = useState(ANATOMY_DATA[0].id);
+            const activeData = ANATOMY_DATA.find(t => t.id === activeTissue);
+
+            return (
+                <div className="flex flex-col lg:flex-row gap-8 transition-opacity duration-300">
+                <div className="w-full lg:w-1/2 relative bg-gray-50 rounded-2xl p-6 border border-gray-200 shadow-sm flex items-center justify-center min-h-[400px]">
+                    <AnatomySVG />
+                </div>
+                <div className="w-full lg:w-1/2 flex flex-col gap-6">
+                    <div>
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">Тканини стебла</h3>
+                    <div className="flex flex-col gap-2">
+                        {ANATOMY_DATA.map(tissue => (
+                        <button key={tissue.id} onClick={() => setActiveTissue(tissue.id)} className={`px-5 py-3 rounded-xl text-left font-semibold transition-all border-2 ${activeTissue === tissue.id ? 'bg-green-600 text-white border-green-600 shadow-md transform scale-[1.02]' : 'bg-white text-gray-600 border-gray-200 hover:bg-green-50 hover:border-green-300 hover:text-green-700'}`}>
+                            {tissue.label}
+                        </button>
+                        ))}
+                    </div>
+                    </div>
+                    {activeData && (
+                    <div className="bg-green-50 border border-green-200 p-6 rounded-2xl shadow-sm">
+                        <h4 className="text-lg font-bold text-green-900 mb-3 flex items-center gap-2"><IconInfo size={22} /> Детальніше</h4>
+                        <p className="text-gray-700 leading-relaxed font-medium">{activeData.desc}</p>
+                    </div>
+                    )}
+                </div>
+                </div>
+            );
+        };
+
+        const QuizTab = () => {
+            const [currentQ, setCurrentQ] = useState(0);
+            const [score, setScore] = useState(0);
+            const [showResult, setShowResult] = useState(false);
+            const [selected, setSelected] = useState(null);
+
+            const handleSelect = (index) => {
+                setSelected(index);
+                setTimeout(() => {
+                if (index === QUIZ_QUESTIONS[currentQ].correctIndex) setScore(s => s + 1);
+                if (currentQ < QUIZ_QUESTIONS.length - 1) {
+                    setCurrentQ(q => q + 1);
+                    setSelected(null);
+                } else {
+                    setShowResult(true);
+                }
+                }, 1200);
+            };
+
+            if (showResult) {
+                return (
+                <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-gray-200 text-center shadow-sm">
+                    <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6 shadow-inner"><IconCheckSquare size={48} /></div>
+                    <h2 className="text-3xl font-bold text-gray-800 mb-4">Тест завершено!</h2>
+                    <p className="text-xl text-gray-600 mb-8 font-medium">Ваш результат: <span className="font-bold text-green-600 text-2xl">{score}</span> з {QUIZ_QUESTIONS.length}</p>
+                    <button onClick={() => { setCurrentQ(0); setScore(0); setShowResult(false); setSelected(null); }} className="px-8 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors shadow-md flex items-center gap-2">
+                    <IconRefresh size={20} /> Пройти ще раз
+                    </button>
+                </div>
+                );
+            }
+
+            const question = QUIZ_QUESTIONS[currentQ];
+            return (
+                <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
+                <div className="mb-8 flex items-center justify-between text-sm font-bold text-gray-400 uppercase tracking-wider">
+                    <span>Питання {currentQ + 1} з {QUIZ_QUESTIONS.length}</span>
+                    <span className="text-green-600 bg-green-50 px-3 py-1 rounded-full">Бали: {score}</span>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-800 mb-8 leading-snug">{question.question}</h3>
+                <div className="flex flex-col gap-4">
+                    {question.options.map((option, idx) => {
+                    let btnClass = "bg-white border-gray-200 text-gray-700 hover:border-green-400 hover:bg-green-50";
+                    if (selected !== null) {
+                        if (idx === question.correctIndex) btnClass = "bg-green-100 border-green-500 text-green-800 font-bold shadow-inner";
+                        else if (idx === selected) btnClass = "bg-red-100 border-red-500 text-red-800 font-bold";
+                        else btnClass = "bg-gray-50 border-gray-200 text-gray-400 opacity-50 cursor-not-allowed";
+                    }
+                    return (
+                        <button key={idx} disabled={selected !== null} onClick={() => handleSelect(idx)} className={`p-5 rounded-xl border-2 text-left font-medium transition-all duration-300 ${btnClass}`}>
+                        {option}
+                        </button>
+                    );
+                    })}
+                </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState(TABS[0].id);
+
+            return (
+                <div className="min-h-screen pb-12">
+                <header className="bg-white shadow-sm border-b border-green-100 sticky top-0 z-50">
+                    <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center shadow-md">
+                        <IconMicroscope className="text-white" size={24} />
+                    </div>
+                    <h1 className="text-xl font-bold text-gray-800">Віртуальна лабораторія: <span className="text-green-600">Мікроскопія</span></h1>
+                    </div>
+                </header>
+                <main className="max-w-6xl mx-auto px-4 mt-8">
+                    <div className="flex overflow-x-auto gap-2 mb-8 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
+                    {TABS.map(tab => {
+                        const Icon = tab.icon;
+                        const isActive = activeTab === tab.id;
+                        return (
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm whitespace-nowrap transition-all flex-1 justify-center ${isActive ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-green-50 hover:text-green-700'}`}>
+                            <Icon size={18} /> {tab.label}
+                        </button>
+                        );
+                    })}
+                    </div>
+                    <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 min-h-[500px]">
+                    {activeTab === 'prep' && <PreparationTab />}
+                    {activeTab === 'microscope' && <MicroscopeTab />}
+                    {activeTab === 'anatomy' && <AnatomyTab />}
+                    {activeTab === 'quiz' && <QuizTab />}
+                    </div>
+                </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
